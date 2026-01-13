@@ -7,7 +7,11 @@ Provides web scraping with bot detection bypass for LeadGraph
 import sys
 import json
 import asyncio
+import os
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
+
+# Suppress all Crawl4AI progress output
+os.environ['CRAWL4AI_VERBOSE'] = '0'
 
 async def crawl_url(url, timeout=30):
     """
@@ -18,6 +22,7 @@ async def crawl_url(url, timeout=30):
         browser_config = BrowserConfig(
             headless=True,
             verbose=False,
+            log_console=False,
             extra_args=[
                 "--no-sandbox",
                 "--disable-setuid-sandbox",
@@ -68,6 +73,9 @@ def main():
     """
     Main entry point - expects JSON input via stdin
     """
+    # Redirect stderr to devnull to suppress all progress output
+    sys.stderr = open(os.devnull, 'w')
+    
     try:
         # Read input from stdin
         input_data = json.loads(sys.stdin.read())
@@ -75,18 +83,22 @@ def main():
         timeout = input_data.get("timeout", 30)
         
         if not url:
-            print(json.dumps({"success": False, "error": "No URL provided"}))
+            # Write to stdout only
+            sys.stdout.write(json.dumps({"success": False, "error": "No URL provided"}) + "\n")
+            sys.stdout.flush()
             sys.exit(1)
         
         # Run async crawler
         result = asyncio.run(crawl_url(url, timeout))
         
-        # Output result as JSON
-        print(json.dumps(result))
+        # Output result as JSON to stdout only
+        sys.stdout.write(json.dumps(result) + "\n")
+        sys.stdout.flush()
         sys.exit(0)
         
     except Exception as e:
-        print(json.dumps({"success": False, "error": str(e)}))
+        sys.stdout.write(json.dumps({"success": False, "error": str(e)}) + "\n")
+        sys.stdout.flush()
         sys.exit(1)
 
 if __name__ == "__main__":

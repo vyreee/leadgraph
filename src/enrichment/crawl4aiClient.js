@@ -75,15 +75,19 @@ export class Crawl4AIClient {
         });
 
         python.stderr.on('data', (data) => {
+          // Ignore stderr - Crawl4AI outputs progress there
           error += data.toString();
         });
 
         python.on('close', (code) => {
           if (code === 0) {
             try {
-              resolve(JSON.parse(output));
+              // Extract only the last line (JSON output)
+              const lines = output.trim().split('\n');
+              const jsonLine = lines[lines.length - 1];
+              resolve(JSON.parse(jsonLine));
             } catch (e) {
-              reject(new Error(`Failed to parse Python output: ${output}`));
+              reject(new Error(`Failed to parse Python output: ${output.substring(0, 200)}`));
             }
           } else {
             reject(new Error(error || 'Python script failed'));
