@@ -5,7 +5,7 @@
   "description": "Multi-source local business lead discovery with enrichment, deduplication, scoring, and CRM integration. Uses official APIs for reliable data collection.",
   "version": "0.2",
   "buildTag": "latest",
-  "input": "./INPUT_SCHEMA.json",
+  "input": "./.actor/INPUT_SCHEMA.json",
   "dockerfile": "./Dockerfile",
   "readme": "./README.md",
   "storages": {
