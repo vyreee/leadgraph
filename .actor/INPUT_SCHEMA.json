@@ -72,12 +72,12 @@
       "title": "Sources",
       "type": "array",
       "description": "Select which sources to use for discovery.",
-      "editor": "checkboxGroup",
-      "default": ["googleMaps", "yelp", "bbb", "serp"],
+      "editor": "select",
+      "default": ["googleMaps", "yelp"],
+      "uniqueItems": true,
       "items": {
         "type": "string",
-        "enum": ["googleMaps", "yelp", "bbb", "chambers", "serp", "nicheDirectories"],
-        "enumTitles": ["Google Maps", "Yelp", "BBB", "Chambers of Commerce", "Search (SERP)", "Niche directories"]
+        "enum": ["googleMaps", "yelp", "bbb", "chambers", "serp", "nicheDirectories"]
       }
     },
     "maxResultsPerLocation": {
