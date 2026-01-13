@@ -22,7 +22,6 @@ async def crawl_url(url, timeout=30):
         browser_config = BrowserConfig(
             headless=True,
             verbose=False,
-            log_console=False,
             extra_args=[
                 "--no-sandbox",
                 "--disable-setuid-sandbox",

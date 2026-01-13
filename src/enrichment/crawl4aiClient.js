@@ -98,11 +98,15 @@ export class Crawl4AIClient {
         python.stdin.write(input);
         python.stdin.end();
 
-        // Set timeout
-        setTimeout(() => {
-          python.kill();
+        // Set timeout with proper cleanup
+        const timeoutId = setTimeout(() => {
+          python.kill('SIGTERM');
           reject(new Error('Crawl timeout'));
-        }, (timeout + 5) * 1000);
+        }, (timeout + 10) * 1000); // Give extra buffer for Python startup
+        
+        python.on('close', () => {
+          clearTimeout(timeoutId);
+        });
       });
 
       if (result.success) {
