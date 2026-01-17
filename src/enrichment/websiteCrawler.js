@@ -1,9 +1,7 @@
 import { log } from 'crawlee';
-import { Crawl4AIClient, simpleFetch } from './crawl4aiClient.js';
-
-// Initialize Crawl4AI client (will check availability on first use)
-let crawl4aiClient = null;
-let crawl4aiAvailable = null;
+import { PlaywrightCrawler } from 'crawlee';
+import { chromium } from 'playwright';
+import { simpleFetch } from './simpleFetch.js';
 
 export async function crawlWebsite(websiteUrl, options) {
   if (!websiteUrl) {
@@ -20,18 +18,7 @@ export async function crawlWebsite(websiteUrl, options) {
     
     log.info(`Crawling website: ${domain}`);
     
-    // Initialize Crawl4AI client if needed
-    if (crawl4aiAvailable === null) {
-      crawl4aiClient = new Crawl4AIClient();
-      crawl4aiAvailable = await crawl4aiClient.checkAvailability();
-      if (crawl4aiAvailable) {
-        log.info('Crawl4AI service available - using hybrid approach');
-      } else {
-        log.info('Crawl4AI not available - using simple fetch only');
-      }
-    }
-
-    // HYBRID APPROACH: Try simple fetch first (fast), fallback to Crawl4AI if it fails
+    // HYBRID APPROACH: Try simple fetch first (fast), fallback to Playwright if it fails
     log.debug(`Trying simple fetch for ${domain}`);
     const simpleResult = await simpleFetch(startUrl, 10000);
     
@@ -55,21 +42,15 @@ export async function crawlWebsite(websiteUrl, options) {
         
         return buildCrawlResult(crawledPages, allHtml, domain);
       } else {
-        log.info(`Simple fetch blocked for ${domain}, trying Crawl4AI`);
+        log.info(`Simple fetch blocked for ${domain}, trying Playwright`);
       }
     } else {
       log.debug(`Simple fetch failed for ${domain}: ${simpleResult.error || 'No content'}`);
     }
     
-    // Fallback to Crawl4AI if simple fetch failed or was blocked
-    if (crawl4aiAvailable) {
-      log.info(`Using Crawl4AI for ${domain}`);
-      return await crawlWithCrawl4AI(startUrl, domain, maxPages, options);
-    }
-    
-    // Both methods failed
-    log.warning(`All crawl methods failed for ${domain}`);
-    return { pages: [], metadata: {}, htmlContent: '' };
+    // Fallback to Playwright if simple fetch failed or was blocked
+    log.info(`Using Playwright for ${domain}`);
+    return await crawlWithPlaywright(startUrl, domain, maxPages, options);
     
   } catch (error) {
     log.error(`Website crawl failed for ${websiteUrl}:`, error.message);
@@ -77,33 +58,67 @@ export async function crawlWebsite(websiteUrl, options) {
   }
 }
 
-// Crawl using Crawl4AI (advanced bot detection bypass)
-async function crawlWithCrawl4AI(startUrl, domain, maxPages, options) {
+// Crawl using Playwright (bot detection bypass with headless browser)
+async function crawlWithPlaywright(startUrl, domain, maxPages, options) {
   const crawledPages = [];
   let allHtml = '';
   
   try {
-    const result = await crawl4aiClient.crawlUrl(startUrl, {
-      timeout: 20 // Reduced from 30s to 20s
+    const browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-blink-features=AutomationControlled'
+      ]
     });
     
-    if (result.success) {
-      crawledPages.push({
-        url: result.url,
-        title: result.title,
-        html: result.html
+    const context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      viewport: { width: 1920, height: 1080 }
+    });
+    
+    const page = await context.newPage();
+    
+    try {
+      // Navigate with timeout
+      await page.goto(startUrl, { 
+        waitUntil: 'domcontentloaded',
+        timeout: 15000 
       });
-      allHtml = result.text || result.markdown;
       
-      log.info(`Crawl4AI successfully crawled ${domain}`);
+      // Wait a bit for dynamic content
+      await page.waitForTimeout(2000);
+      
+      // Get page content
+      const html = await page.content();
+      const title = await page.title();
+      
+      crawledPages.push({
+        url: startUrl,
+        title: title,
+        html: html
+      });
+      
+      allHtml = html;
+      
+      log.info(`Playwright successfully crawled ${domain}`);
+      
+    } catch (pageError) {
+      log.warning(`Playwright page error for ${domain}:`, pageError.message);
+    } finally {
+      await browser.close();
+    }
+    
+    if (crawledPages.length > 0) {
       return buildCrawlResult(crawledPages, allHtml, domain);
     } else {
-      log.warning(`Crawl4AI failed for ${domain}: ${result.error}`);
       return { pages: [], metadata: {}, htmlContent: '' };
     }
     
   } catch (error) {
-    log.error(`Crawl4AI error for ${domain}:`, error.message);
+    log.error(`Playwright error for ${domain}:`, error.message);
     return { pages: [], metadata: {}, htmlContent: '' };
   }
 }

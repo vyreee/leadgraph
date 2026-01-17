@@ -1,25 +1,5 @@
 FROM apify/actor-node-playwright-chrome:20
 
-# Switch to root to install system packages
-USER root
-
-# Install Python and pip
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create symlink for python (pip already exists)
-RUN ln -sf /usr/bin/python3 /usr/bin/python
-
-# Install Crawl4AI and dependencies (--break-system-packages needed for Python 3.13)
-RUN pip install --no-cache-dir --break-system-packages \
-    crawl4ai \
-    playwright \
-    && python -m playwright install chromium \
-    && python -m playwright install-deps chromium
-
 COPY package*.json ./
 
 RUN npm --quiet set progress=false \
@@ -29,8 +9,6 @@ RUN npm --quiet set progress=false \
     && echo "Node.js version:" \
     && node --version \
     && echo "NPM version:" \
-    && npm --version \
-    && echo "Python version:" \
-    && python --version
+    && npm --version
 
 COPY . ./
