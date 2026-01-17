@@ -84,6 +84,9 @@ export async function generateOutreach(lead, options) {
     const data = await response.json();
     const content = data.choices[0]?.message?.content || '';
 
+    // Debug: Log raw AI response for troubleshooting
+    log.debug(`Raw AI response for ${businessName}:`, content.substring(0, 200));
+
     const outreach = parseOutreachResponse(content);
 
     log.info(`Generated AI outreach for ${businessName}`);
@@ -210,15 +213,19 @@ function parseOutreachResponse(content) {
   };
 
   try {
-    const subjectMatch = content.match(/COLD_EMAIL_SUBJECT:\s*\n(.+?)(?=\n\n|COLD_EMAIL_BODY:)/s);
-    const bodyMatch = content.match(/COLD_EMAIL_BODY:\s*\n(.+?)(?=\n\n|VOICEMAIL:)/s);
-    const voicemailMatch = content.match(/VOICEMAIL:\s*\n(.+?)(?=\n\n|SMS:)/s);
-    const smsMatch = content.match(/SMS:\s*\n(.+?)$/s);
+    // More flexible regex patterns to handle variations in AI output
+    const subjectMatch = content.match(/COLD_EMAIL_SUBJECT:\s*\n(.+?)(?=\n\n|COLD_EMAIL_BODY:|$)/s);
+    const bodyMatch = content.match(/COLD_EMAIL_BODY:\s*\n([\s\S]+?)(?=\n\nVOICEMAIL:|VOICEMAIL:|$)/);
+    const voicemailMatch = content.match(/VOICEMAIL:\s*\n([\s\S]+?)(?=\n\nSMS:|SMS:|$)/);
+    const smsMatch = content.match(/SMS:\s*\n([\s\S]+?)$/);
 
     if (subjectMatch && bodyMatch) {
       const subject = subjectMatch[1].trim();
       const body = bodyMatch[1].trim();
       outreach.coldEmail = `Subject: ${subject}\n\n${body}`;
+      log.debug(`Parsed email - Subject length: ${subject.length}, Body length: ${body.length}`);
+    } else {
+      log.warning('Failed to parse email subject/body from AI response');
     }
 
     if (voicemailMatch) {
