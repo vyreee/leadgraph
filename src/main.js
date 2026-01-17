@@ -271,8 +271,12 @@ try {
     lead.raw.runId = Actor.getEnv().actorRunId || '';
   });
 
-  log.info(`Saving ${finalLeads.length} leads to dataset`);
-  await Actor.pushData(finalLeads);
+  // Clean output for final dataset (remove unnecessary fields)
+  const { cleanLeadsForDataset } = await import('./utils/cleanOutput.js');
+  const cleanedLeads = cleanLeadsForDataset(finalLeads);
+
+  log.info(`Saving ${cleanedLeads.length} leads to dataset (cleaned format)`);
+  await Actor.pushData(cleanedLeads);
 
   const sourceCoverage = {};
   for (const lead of rawLeads) {

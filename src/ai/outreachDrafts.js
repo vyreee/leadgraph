@@ -201,7 +201,6 @@ VOICEMAIL:
 SMS:
 [sms message]`;
 }
-}
 
 function parseOutreachResponse(content) {
   const outreach = {
